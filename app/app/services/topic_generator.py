@@ -1,32 +1,62 @@
-import requests
-from app.config import MODEL_NAMES, HF_API_KEY
+from huggingface_hub import InferenceClient
+from app.config import HF_API_KEY, MODEL_NAMES
 
-API_URL = f"https://api-inference.huggingface.co/models/{MODEL_NAMES['text_generator']}"
-headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+client = InferenceClient(api_key=HF_API_KEY)
+
 
 def generate_topics(event_themes, user_interests):
-    prompt = (
-        f"I'm attending a networking event focused on {', '.join(event_themes)}. "
-        f"I'm personally interested in {', '.join(user_interests)}. "
-        f"What are three creative and engaging conversation starters I could use to break the ice?"
-    )
 
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 80,
-            "return_full_text": False 
-        }
-    }
+    prompt = f"""
+You are a networking coach.
 
-    response = requests.post(API_URL, headers=headers, json=payload)
-    
-    if response.status_code == 200:
-        data = response.json()
-        if isinstance(data, list) and len(data) > 0:
-            generated_text = data[0].get("generated_text", "")
-            suggestions = generated_text.split("\n")[:3]
-            return [s.strip("- ").strip() for s in suggestions if s.strip()]
-    
-    print(f"API Error: {response.text}")
-    return ["What brings you to this event today?", "Have you heard any good talks so far?"] # Fallback
+Event themes:
+
+{', '.join(event_themes)}
+
+User interests:
+
+{', '.join(user_interests)}
+
+Generate exactly three professional networking conversation starters.
+
+Return only bullet points.
+"""
+
+    try:
+
+        response = client.chat.completions.create(
+            model=MODEL_NAMES["chat_model"],
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.7
+        )
+
+        text = response.choices[0].message.content
+
+        suggestions = []
+
+        for line in text.split("\n"):
+
+            line = line.strip()
+
+            if line.startswith("-"):
+                suggestions.append(line[1:].strip())
+
+            elif line[:2].isdigit():
+                suggestions.append(line[2:].strip())
+
+        return suggestions[:3]
+
+    except Exception as e:
+
+        print(e)
+
+    return [
+        "What inspired you to attend this event?",
+        "What exciting projects are you currently working on?",
+        "Which emerging technologies interest you the most?"
+    ]
