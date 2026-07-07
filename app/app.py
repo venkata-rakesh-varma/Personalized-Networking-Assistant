@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = "https://personalized-networking-assistant-8afm.onrender.com"
 
 # ---------------------------------------------------
 # Session State
